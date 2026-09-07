@@ -17,9 +17,10 @@ class App :
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         #set up  button for GUI
+        self.ui = tk.Frame(self.window)
         self.selected_filter = None
-        self.filter = ['rgb', 'grayscale', 'red', 'green', 'blue', 'magenta','yellow', 'cyan']
-        self.filters = ttk.Combobox(self.window, values=self.filter, state='readonly')
+        self.filter = ['rgb', 'grayscale', 'red', 'green', 'blue', 'magenta','yellow', 'cyan', 'custom']
+        self.filters = ttk.Combobox(self.ui, values=self.filter, state='readonly')
         self.filters.set('rgb')
         self.filters.pack(
             padx=1, 
@@ -29,22 +30,41 @@ class App :
             "<<ComboboxSelected>>", 
             self.click_filter
             )
+        self.slider_frame = tk.Frame(self.ui)
+        self.ui.pack()
+        
+        self.blue_scale = tk.Scale(self.slider_frame, from_=0, to=255, orient='horizontal', label="Blue")
+        self.green_scale = tk.Scale(self.slider_frame, from_=0, to=255, orient='horizontal', label="Green")
+        self.red_scale = tk.Scale(self.slider_frame, from_=0, to=255, orient='horizontal', label="Red")
+
+        self.red_scale.set(255)
+        self.green_scale.set(255)
+        self.blue_scale.set(255)
+
+        self.red_scale.pack(side="left", padx=100)
+        self.green_scale.pack(side="left", padx=100)
+        self.blue_scale.pack(side="left", padx=100)
+        
+
 
         # set up 3D plot for each channel
-        self.fig_red = Figure(figsize=(5, 5), dpi=100)
-        self.ax_red = self.fig_red.add_subplot(projection='3d', proj_type='ortho')
+        self.fig_red = Figure(figsize=(7, 7), dpi=100)
+        self.ax_red = self.fig_red.add_subplot(projection='3d')
+        self.ax_red.view_init(elev=-100, azim=-90, roll=-0)
         self.plot_canvas_red = FigureCanvasTkAgg(self.fig_red, master=self.window)
         self.canvas_widget_red = self.plot_canvas_red.get_tk_widget()
         self.canvas_widget_red.pack(side="left")
 
-        self.fig_green = Figure(figsize=(5, 5), dpi=100)
-        self.ax_green = self.fig_green.add_subplot(projection='3d', proj_type='ortho')
+        self.fig_green = Figure(figsize=(7, 7), dpi=100)
+        self.ax_green = self.fig_green.add_subplot(projection='3d')
+        self.ax_green.view_init(elev=-100, azim=-90, roll=-0)
         self.plot_canvas_green = FigureCanvasTkAgg(self.fig_green, master=self.window)
         self.canvas_widget_green = self.plot_canvas_green.get_tk_widget()
         self.canvas_widget_green.pack(side="left")
 
-        self.fig_blue = Figure(figsize=(5, 5), dpi=100)
-        self.ax_blue = self.fig_blue.add_subplot(projection='3d', proj_type='ortho')
+        self.fig_blue = Figure(figsize=(7, 7), dpi=100)
+        self.ax_blue = self.fig_blue.add_subplot(projection='3d')
+        self.ax_blue.view_init(elev=-100, azim=-90, roll=-0)
         self.plot_canvas_blue = FigureCanvasTkAgg(self.fig_blue, master=self.window)
         self.canvas_widget_blue = self.plot_canvas_blue.get_tk_widget()
         self.canvas_widget_blue.pack(side="left")
@@ -54,6 +74,7 @@ class App :
     def update_frame(self):
         cv_frame=None
         ret, frame = self.cap.read()
+        h, w = frame[:,:,0].shape
         if ret:
             frame = cv2.flip(frame, 1) 
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -92,6 +113,8 @@ class App :
                     cv_frame[:,:,0] = 0
                     # cv_frame[:,:,1] = 0
                     # cv_frame[:,:,2] = 0
+                case 'custom' :
+                    cv_frame = self.custom_filter(h=h, w=w, cv_frame=cv_frame)
 
             # render filtered
             self.photo = Image.fromarray(cv_frame)
@@ -106,7 +129,26 @@ class App :
 
     def click_filter(self, event=None):
         self.selected_filter = self.filters.get()
+        if self.selected_filter == 'custom':
+            self.slider_frame.pack()
+        else: 
+            self.slider_frame.pack_forget()
         # print(self.selected_filter)
+    
+    def custom_filter(self, w, h, cv_frame) :
+        # Retrieve scale factors normalized between 0.0 and 1.0
+        r_factor = self.red_scale.get() / 255.0
+        g_factor = self.green_scale.get() / 255.0
+        b_factor = self.blue_scale.get() / 255.0
+
+        # In OpenCV (BGR):
+        # Channel 0 = Blue, Channel 1 = Green, Channel 2 = Red
+        cv_frame[:, :, 0] = (cv_frame[:, :, 0] * r_factor).astype(np.uint8)
+        cv_frame[:, :, 1] = (cv_frame[:, :, 1] * g_factor).astype(np.uint8)
+        cv_frame[:, :, 2] = (cv_frame[:, :, 2] * b_factor).astype(np.uint8)
+
+        return cv_frame
+
 
     def create_3d_scatter(self, frame):
         red_channel = frame[::16, ::16, 0]
@@ -137,6 +179,12 @@ class App :
         self.ax_red.set_zlim([0,255])
         self.ax_red.set_xlabel("X")
         self.ax_red.set_ylabel("Y")
+        # current_elev = self.ax_red.elev
+        # current_azim = self.ax_red.azim
+        # current_roll = self.ax_red.roll
+        # print(f"Current roll : {current_roll}")
+        # print(f"Current elev : {current_elev}")
+        # print(f"Current azim : {current_azim}")
 
         self.ax_green.set_zlim([0,255])
         self.ax_green.set_xlabel("X")
@@ -145,6 +193,8 @@ class App :
         self.ax_blue.set_zlim([0,255])
         self.ax_blue.set_xlabel("X")
         self.ax_blue.set_ylabel("Y")
+
+        self.ax_blue.set
 
         self.plot_canvas_red.draw()
         self.plot_canvas_green.draw()
