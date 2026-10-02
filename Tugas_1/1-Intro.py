@@ -6,9 +6,9 @@ from PIL import Image, ImageTk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-GAMBAR_KONTRAS_RENDAH = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowcontrast.jpeg"
-GAMBAR_GELAP = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowlight.jpeg"
-GAMBAR_TERANG = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/toomuchlight.jpeg"
+GAMBAR_KONTRAS_RENDAH = "foto/lowcontrast.jpeg"
+GAMBAR_GELAP = "foto/lowlight.jpeg"
+GAMBAR_TERANG = "foto/toomuchlight.jpeg"
 
 
 class App :
