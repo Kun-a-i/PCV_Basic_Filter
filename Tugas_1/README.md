@@ -34,6 +34,7 @@ Terdapat beberapa preset filter warna yang tersedia seperti berikut.
 - magenta
 - yellow
 - custom
+
 ![Menu Filter](./img/filter_menu.png)
 
 Mode `custom` merupakan mode pengaturan intensitas setiap channel warna secara independen. Setiap channel dapat diatur nilai maksimumnya dari 0 hingga 255. 
