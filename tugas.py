@@ -7,9 +7,9 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from matplotlib.figure import Figure
 
-GAMBAR_KONTRAS_RENDAH = "/home/kuna.ibad/Documents/Project Python/PCV_Tugas 1/foto/lowcontrast.jpeg"
-GAMBAR_GELAP = "/home/kuna.ibad/Documents/Project Python/PCV_Tugas 1/foto/lowlight.jpeg"
-GAMBAR_TERANG = "/home/kuna.ibad/Documents/Project Python/PCV_Tugas 1/foto/toomuchlight.jpeg"
+GAMBAR_KONTRAS_RENDAH = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowcontrast.jpeg"
+GAMBAR_GELAP = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowlight.jpeg"
+GAMBAR_TERANG = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/toomuchlight.jpeg"
 
 class App :
     def __init__(self, window, window_title):

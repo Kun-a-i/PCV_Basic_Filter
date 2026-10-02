@@ -6,6 +6,11 @@ from PIL import Image, ImageTk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+GAMBAR_KONTRAS_RENDAH = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowcontrast.jpeg"
+GAMBAR_GELAP = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/lowlight.jpeg"
+GAMBAR_TERANG = "/home/kuna.ibad/Documents/Project_Python/PCV_Tugas 1/foto/toomuchlight.jpeg"
+
+
 class App :
     def __init__(self, window, window_title):
         #set up main window and camera view
@@ -19,6 +24,8 @@ class App :
         #set up  button for GUI
         self.ui = tk.Frame(self.window)
         self.selected_filter = None
+
+        #filter dropdown
         self.filter = ['rgb', 'grayscale', 'red', 'green', 'blue', 'magenta','yellow', 'cyan', 'custom']
         self.filters = ttk.Combobox(self.ui, values=self.filter, state='readonly')
         self.filters.set('rgb')
@@ -30,6 +37,8 @@ class App :
             "<<ComboboxSelected>>", 
             self.click_filter
             )
+
+        #slider for color
         self.slider_frame = tk.Frame(self.ui)
         self.ui.pack()
         
@@ -44,7 +53,21 @@ class App :
         self.red_scale.pack(side="left", padx=100)
         self.green_scale.pack(side="left", padx=100)
         self.blue_scale.pack(side="left", padx=100)
-        
+
+        #choose image
+        self.pilihan_foto = ['camera','gambar_gelap', 'gambar_terang', 'gambar_kontras_rendah']
+        self.pilih = ttk.Combobox(
+            master=self.ui, 
+            values=self.pilihan_foto, 
+            state='readonly'
+        )
+        self.pilih.pack(padx=10, pady=20)
+        self.pilih.bind(
+            "<<ComboboxSelected>>",
+            self.foto_terpilih
+        )
+        self.pilih.set('camera')
+        self.selected_photo = None
 
 
         # set up 3D plot for each channel
@@ -71,59 +94,90 @@ class App :
 
         self.update_frame()
 
+    def foto_terpilih(self, event=None) :
+        rgb_img = None
+        match self.pilih.get() :
+            case 'gambar_gelap':
+                if self.cap :
+                    self.cap.release()
+                    self.cap = None
+                self.selected_photo = cv2.imread(GAMBAR_GELAP)
+            case 'gambar_terang' :
+                if self.cap :
+                    self.cap.release()
+                    self.cap = None
+                self.selected_photo = cv2.imread(GAMBAR_TERANG)
+            case 'gambar_kontras_rendah' :
+                if self.cap :
+                    self.cap.release()
+                    self.cap = None
+                self.selected_photo = cv2.imread(GAMBAR_KONTRAS_RENDAH)
+            case _:
+                self.selected_photo = None
+                self.cap = cv2.VideoCapture(0)
+
+    def apply_filter(self, frame, cv_frame, h, w):
+        # set filter
+        match self.selected_filter:
+            case 'rgb':
+                cv_frame = frame
+            case 'grayscale':
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                cv_frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+            case 'red':
+                cv_frame[:,:,2] = 0
+                cv_frame[:,:,1] = 0
+            case 'green':
+                cv_frame[:,:,2] = 0
+                cv_frame[:,:,0] = 0
+            case 'blue':
+                cv_frame[:,:,0] = 0
+                cv_frame[:,:,1] = 0
+            case 'magenta':
+                cv_frame[:,:,1] = 0
+            case 'yellow' :
+                cv_frame[:,:,2] = 0
+            case 'cyan' :
+                cv_frame[:,:,0] = 0
+            case 'custom' :
+                cv_frame = self.custom_filter(h=h, w=w, cv_frame=cv_frame)
+        
+        # render filtered
+        self.photo = Image.fromarray(cv_frame)
+        self.img_tk = ImageTk.PhotoImage(image=self.photo)
+        self.canvas.create_image(720, 0, image=self.img_tk, anchor=tk.NW)
+        
+        
+        # render 3D plot
+        self.create_3d_scatter(cv_frame)
+    
     def update_frame(self):
         cv_frame=None
-        ret, frame = self.cap.read()
-        h, w = frame[:,:,0].shape
-        if ret:
-            frame = cv2.flip(frame, 1) 
+        frame = None
+        if self.cap :
+            ret, frame = self.cap.read()
+            h, w = frame[:,:,0].shape
+            if ret:
+                frame = cv2.flip(frame, 1) 
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                cv_frame = frame
+
+                #render preview
+                self.preview = Image.fromarray(frame)
+                self.img_tk_prev = ImageTk.PhotoImage(image=self.preview)
+                self.canvas.create_image(0, 0, image=self.img_tk_prev, anchor=tk.NW)
+                self.apply_filter(frame, cv_frame, h, w)
+        else :
+            frame = cv2.resize(self.selected_photo, (640, 480), interpolation=cv2.INTER_AREA)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             cv_frame = frame
-
-            #render preview
+            h, w = frame[:,:,0].shape
             self.preview = Image.fromarray(frame)
             self.img_tk_prev = ImageTk.PhotoImage(image=self.preview)
             self.canvas.create_image(0, 0, image=self.img_tk_prev, anchor=tk.NW)
+            self.apply_filter(frame, cv_frame, h, w)
 
-            # set filter
-            match self.selected_filter:
-                case 'rgb':
-                    cv_frame = frame
-                case 'grayscale':
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    cv_frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
-                case 'red':
-                    cv_frame[:,:,2] = 0
-                    cv_frame[:,:,1] = 0
-                case 'green':
-                    cv_frame[:,:,2] = 0
-                    cv_frame[:,:,0] = 0
-                case 'blue':
-                    cv_frame[:,:,0] = 0
-                    cv_frame[:,:,1] = 0
-                case 'magenta':
-                    # cv_frame[:,:,0] = 0
-                    cv_frame[:,:,1] = 0
-                    # cv_frame[:,:,2] = 0
-                case 'yellow' :
-                    # cv_frame[:,:,0] = 0
-                    # cv_frame[:,:,1] = 0
-                    cv_frame[:,:,2] = 0
-                case 'cyan' :
-                    cv_frame[:,:,0] = 0
-                    # cv_frame[:,:,1] = 0
-                    # cv_frame[:,:,2] = 0
-                case 'custom' :
-                    cv_frame = self.custom_filter(h=h, w=w, cv_frame=cv_frame)
-
-            # render filtered
-            self.photo = Image.fromarray(cv_frame)
-            self.img_tk = ImageTk.PhotoImage(image=self.photo)
-            self.canvas.create_image(720, 0, image=self.img_tk, anchor=tk.NW)
-
-
-            # render 3D plot
-            self.create_3d_scatter(cv_frame)
+        
 
         self.window.after(15, self.update_frame)
 
@@ -179,12 +233,6 @@ class App :
         self.ax_red.set_zlim([0,255])
         self.ax_red.set_xlabel("X")
         self.ax_red.set_ylabel("Y")
-        # current_elev = self.ax_red.elev
-        # current_azim = self.ax_red.azim
-        # current_roll = self.ax_red.roll
-        # print(f"Current roll : {current_roll}")
-        # print(f"Current elev : {current_elev}")
-        # print(f"Current azim : {current_azim}")
 
         self.ax_green.set_zlim([0,255])
         self.ax_green.set_xlabel("X")
@@ -202,7 +250,7 @@ class App :
 
     def on_closing(self):
         """Clean up video resources on window close."""
-        if self.cap.isOpened():
+        if self.cap :
             self.cap.release()
         self.window.destroy()
 
