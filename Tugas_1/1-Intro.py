@@ -205,9 +205,9 @@ class App :
 
 
     def create_3d_scatter(self, frame):
-        red_channel = frame[::16, ::16, 0]
-        green_channel = frame[::16, ::16, 1]
-        blue_channel = frame[::16, ::16, 2]
+        red_channel = frame[::20, ::20, 0]
+        green_channel = frame[::20, ::20, 1]
+        blue_channel = frame[::20, ::20, 2]
 
         h, w = red_channel.shape
 
