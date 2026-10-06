@@ -33,9 +33,17 @@ class App :
             self.click_mode
         )
 
-        self.filters = ['Gamma', 'Negatif', 'Lut Stretch', 'Logaritmik']
+        self.filters = ['Mean',
+                        'Sharpen',
+                        'Gaussian',
+                        'Laplacian 4',
+                        'Laplacian 8',
+                        'Sobel X',
+                        'Sobel Y',
+                        'No Filter'
+                        ]
         self.select_filter = ttk.Combobox(self.ui, values=self.filters, state='readonly')
-        self.select_filter.set('Gamma')
+        self.select_filter.set('No Filter')
         self.select_filter.pack(
             padx=1,
             pady=10
@@ -71,21 +79,42 @@ class App :
         self.image_path = None
         self.current_dir = os.getcwd()
 
-        #Histogram for preview Image
-        self.fig = Figure(figsize=(5, 3), dpi=100)
-        gs = self.fig.add_gridspec(1, 2, wspace=0.2)
-
-        self.ax = self.fig.add_subplot(gs[0, 0])
-        self.ax.set_title("Preview Histogram")
-        self.ax.set_xlim([0, 256])
-
-        self.filtered_ax = self.fig.add_subplot(gs[0, 1])
-        self.filtered_ax.set_title("Filtered Histogram")
-        self.filtered_ax.set_xlim([0, 256])
-
-        self.hist_canvas = FigureCanvasTkAgg(self.fig, master=self.window)
-        self.canvas_widget = self.hist_canvas.get_tk_widget()
-        self.canvas_widget.pack(fill=tk.BOTH, expand=False, anchor=tk.S)
+        #Kernels
+        self.sharp_kernel = np.array(
+                            [[ 0, -1,  0],
+                            [-1,  5, -1],
+                            [ 0, -1,  0]], np.float64
+                            )
+        self.mean_kernel = (1.0/9.0)*np.array(
+                            [[1, 1, 1],
+                            [ 1, 1, 1],
+                            [ 1, 1, 1]], np.float64
+                            )
+        self.gaussian_kernel = (1.0/16)*np.array(
+                            [[1, 2, 1],
+                            [ 2, 4, 2],
+                            [ 1, 2, 1]], np.float64
+                            )
+        self.lap4_kernel = np.array(
+                            [[0, 1, 0],
+                            [ 1, -4, 1],
+                            [ 0, 1, 0]], np.float64
+                            )
+        self.lap8_kernel = np.array(
+                            [[1, 1, 1],
+                            [ 1, -8, 1],
+                            [ 1, 1, 1]], np.float64
+                            )
+        self.sobelx = np.array(
+                            [[-1, 0, 1],
+                            [ -2, 0, 2],
+                            [ -1, 0, 1]], np.float64
+                            )
+        self.sobely = np.array(
+                            [[-1, 2, -1],
+                            [ 0, 0, 0],
+                            [ -1, 2, -1]], np.float64
+                            )
 
         self.ui.pack()
         self.update_frame()
@@ -109,20 +138,22 @@ class App :
             
     def apply_filter(self, frame):
         match self.selected_filter:
-            case 'Gamma':
-                gamma = self.set_gamma.get()
-                if gamma == '':
-                    gamma = 0.0
-                elif gamma == '.':
-                    gamma = 0.0
-                return self.filter_gamma(frame=frame, gamma=gamma)
-            case 'Negatif':
-                return self.filter_negatif(frame=frame)
-            case 'Logaritmik':
-                return self.filter_log(frame=frame)
-            case 'Lut Stretch':
-                return self.filter_stretch(frame=frame)
-
+            case 'Mean':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.mean_kernel)
+            case 'Sharpen':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.sharp_kernel)
+            case 'Gaussian':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.gaussian_kernel)
+            case 'Laplacian 4':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.lap4_kernel)
+            case 'Laplacian 8':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.lap8_kernel)
+            case 'Sobel X':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobelx)
+            case 'Sobel Y':
+                return cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobely)
+            case _:
+                return frame
 
     def open_file(self):
         self.image_path = filedialog.askopenfilename(
@@ -130,59 +161,6 @@ class App :
             initialdir=self.current_dir,
             filetypes=[("png Files", "*.png"), ("jpeg Files", "*.jpeg"), ("jpg Files", "*.jpg"), ("All Files", "*.*")]
         )
-
-    def calculate_his(self, frame, L=256, channel=0, ax=None):
-        h, w = frame[:, :, 0].shape
-        match channel:
-            case 0:
-                channel_color = "red"
-            case 1:
-                channel_color = "green"
-            case 2:
-                channel_color = "blue"
-        size = h*w/16
-        hist = np.zeros(L, dtype=np.int32)
-        for H in range(int(h/4)):
-            for W in range(int(w/4)):
-                r = frame[H, W, channel] 
-                hist[r] += 1
-
-        hist = np.array(hist)
-        hist = hist/size
-        
-        hist_plot = ax.plot(hist, color=channel_color)
-        return hist_plot
-
-    def rapikan(self, lut):
-        return np.clip(
-            np.floor(lut + 0.5), 
-            0, 
-            255
-        ).astype(np.uint8)
-    
-    def filter_negatif(self, frame):
-        lut_negatif = (255 - self.r)
-        return cv2.LUT(frame, self.rapikan(lut_negatif))
-
-    def filter_log(self, frame):
-        c = 255.0/np.log(256.0)
-        lut_log = c*np.log(1.0 + self.r)
-        return cv2.LUT(frame, self.rapikan(lut_log))
-    
-    def filter_gamma(self, frame, gamma):
-        gamma = float(gamma)
-        lut_gamma = 255.0 * (self.r / 255.0) ** gamma
-        return cv2.LUT(frame, self.rapikan(lut_gamma))
-
-    def filter_stretch(self, frame, r1=80, s1=20, r2=175, s2=240):
-        out = np.empty(256, dtype=np.float64)
-        bagian1 = self.r < r1
-        bagian2 = (self.r >= r1) & (self.r < r2)
-        bagian3 = self.r >= r2
-        out[bagian1] = (s1 / r1) * self.r[bagian1]
-        out[bagian2] = (s2 - s1) / (r2 - r1) * (self.r[bagian2] - r1) + s1
-        out[bagian3] = (255 - s2) / (255 - r2) * (self.r[bagian3] - r2) + s2
-        return cv2.LUT(frame, self.rapikan(out))
 
     def update_frame(self):
         mode = self.select_mode.get()
@@ -217,7 +195,6 @@ class App :
                 self.preview = Image.fromarray(frame)
                 self.img_tk_prev = ImageTk.PhotoImage(image=self.preview)
                 self.canvas.create_image(0,0, image=self.img_tk_prev, anchor=tk.NW)
-        self.ax.clear()
         
         if frame is not None :
             #Apply Filter
@@ -226,24 +203,6 @@ class App :
             self.img_tk = ImageTk.PhotoImage(image=filtered_view)
             self.canvas.create_image(720,0, image=self.img_tk, anchor=tk.NW)
 
-            #Calculate and show Histogram
-            self.ax.clear()
-            self.calculate_his(frame=frame, channel=0, ax=self.ax)
-            self.calculate_his(frame=frame, channel=1, ax=self.ax)
-            self.calculate_his(frame=frame, channel=2, ax=self.ax)
-            self.ax.set_title("Preview Histogram")
-            self.ax.set_xlim([0, 256])
-
-            self.filtered_ax.clear()
-            self.calculate_his(frame=filtered_frame, channel=0, ax=self.filtered_ax)
-            self.calculate_his(frame=filtered_frame, channel=1, ax=self.filtered_ax)
-            self.calculate_his(frame=filtered_frame, channel=2, ax=self.filtered_ax)
-            self.filtered_ax.set_title("Filtered Histogram")
-            self.filtered_ax.set_xlim([0, 256])
-            
-            self.filtered_ax.grid(True, linestyle="--", alpha=0.5)
-            self.ax.grid(True, linestyle="--", alpha=0.5)
-            self.hist_canvas.draw()
         
         self.window.after(15, self.update_frame)
 

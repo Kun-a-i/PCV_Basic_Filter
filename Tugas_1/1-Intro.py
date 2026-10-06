@@ -19,6 +19,7 @@ class App :
         self.cap = cv2.VideoCapture(0)
         self.canvas = tk.Canvas(window, width=1380, height=480, bg="black")
         self.canvas.pack()
+        self.window.title(window_title)
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         #set up  button for GUI
