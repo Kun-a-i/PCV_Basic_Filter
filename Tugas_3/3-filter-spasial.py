@@ -40,6 +40,7 @@ class App :
                         'Laplacian 8',
                         'Sobel X',
                         'Sobel Y',
+                        'Sobel',
                         'No Filter'
                         ]
         self.select_filter = ttk.Combobox(self.ui, values=self.filters, state='readonly')
@@ -85,10 +86,12 @@ class App :
                             [-1,  5, -1],
                             [ 0, -1,  0]], np.float64
                             )
-        self.mean_kernel = (1.0/9.0)*np.array(
-                            [[1, 1, 1],
-                            [ 1, 1, 1],
-                            [ 1, 1, 1]], np.float64
+        self.mean_kernel = (1.0/25.0)*np.array(
+                            [[1, 1, 1, 1, 1],
+                            [ 1, 1, 1, 1, 1],
+                            [ 1, 1, 1, 1, 1],
+                            [ 1, 1, 1, 1, 1],
+                            [ 1, 1, 1, 1, 1]], np.float64
                             )
         self.gaussian_kernel = (1.0/16)*np.array(
                             [[1, 2, 1],
@@ -152,6 +155,11 @@ class App :
                 return cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobelx)
             case 'Sobel Y':
                 return cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobely)
+            case 'Sobel':
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                frame = cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobelx)
+                frame = cv2.filter2D(src=frame, ddepth=-1, kernel=self.sobely)
+                return frame
             case _:
                 return frame
 
@@ -171,6 +179,7 @@ class App :
             
             ret, frame = self.cap.read()
             if ret :
+                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
                 frame = cv2.flip(frame, 1)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 cv_frame = frame
@@ -195,7 +204,7 @@ class App :
                 self.preview = Image.fromarray(frame)
                 self.img_tk_prev = ImageTk.PhotoImage(image=self.preview)
                 self.canvas.create_image(0,0, image=self.img_tk_prev, anchor=tk.NW)
-        
+      
         if frame is not None :
             #Apply Filter
             filtered_frame = self.apply_filter(frame=frame)
@@ -215,5 +224,5 @@ class App :
 
 if __name__ == "__main__":
     root = tk.Tk()
-    App(root, "Tugas 2 PCV")
+    App(root, "Tugas 3 PCV")
     root.mainloop()

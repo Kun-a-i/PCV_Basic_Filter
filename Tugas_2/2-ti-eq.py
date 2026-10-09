@@ -193,6 +193,7 @@ class App :
             
             ret, frame = self.cap.read()
             if ret :
+                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
                 frame = cv2.flip(frame, 1)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 cv_frame = frame
